@@ -1,6 +1,7 @@
 #
 # Copyright (c) 2023 Airbyte, Inc., all rights reserved.
 #
+import urllib
 
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, MutableMapping, Optional
@@ -9,7 +10,7 @@ from airbyte_cdk.sources.declarative.incremental import Cursor
 from airbyte_cdk.sources.declarative.retrievers.simple_retriever import SimpleRetriever
 from airbyte_cdk.sources.declarative.stream_slicers import CartesianProductStreamSlicer
 from airbyte_cdk.sources.declarative.types import Record, StreamSlice, StreamState
-
+from airbyte_cdk.sources.declarative.requesters.http_requester import HttpRequester
 
 @dataclass
 class EventsSimpleRetriever(SimpleRetriever):
@@ -147,3 +148,39 @@ class EventsCartesianProductStreamSlicer(Cursor, CartesianProductStreamSlicer):
             return True
         else:
             return False
+
+@dataclass
+class PosthogHttpRequester(HttpRequester):
+
+    def _request_params(
+        self,
+        stream_state: Optional[StreamState],
+        stream_slice: Optional[StreamSlice],
+        next_page_token: Optional[Mapping[str, Any]],
+        extra_params: Optional[Mapping[str, Any]] = None,
+    ) -> Mapping[str, Any]:
+        """
+        Specifies the query parameters that should be set on an outgoing HTTP request given the inputs.
+
+        E.g: you might want to define query parameters for paging if next_page_token is not None.
+        """
+        if next_page_token is not None:
+            url = next_page_token['next_page_token']
+            parsed_url = urllib.parse.urlparse(url)
+
+            options=dict((k, v[0] if isinstance(v, list) else v)
+                for k, v in urllib.parse.parse_qs(parsed_url.query).items())
+
+        else:
+            options = self._get_request_options(
+                stream_state, stream_slice, next_page_token, self.get_request_params, self.get_authenticator().get_request_params, extra_params
+            )
+
+        if isinstance(options, str):
+            raise ValueError("Request params cannot be a string")
+
+        for k, v in options.items():
+            if isinstance(v, (dict,)):
+                raise ValueError(f"Invalid value for `{k}` parameter. The values of request params cannot be an object.")
+
+        return options

@@ -10,8 +10,17 @@ definitions:
       type: DpathExtractor
       field_path: ["results"]
 
+  # requester:
+  #   type: HttpRequester
+  #   url_base: "{{ config['base_url'] or 'https://app.posthog.com'}}/api/"
+  #   http_method: "GET"
+  #   authenticator:
+  #     type: BearerAuthenticator
+  #     api_token: "{{ config['api_key'] }}"
+
   requester:
-    type: HttpRequester
+    type: CustomRequester
+    class_name: source_posthog.components.PosthogHttpRequester
     url_base: "{{ config['base_url'] or 'https://app.posthog.com'}}/api/"
     http_method: "GET"
     authenticator:
