@@ -1,40 +1,34 @@
 data:
-  ab_internal:
-    ql: 300
-    sl: 100
   allowedHosts:
     hosts:
-      - ${base_url}
-      - app.posthog.com
-  connectorSubtype: api
-  connectorType: source
-  definitionId: af6d50ee-dddf-4126-a8ee-7faee990774f
-  dockerImageTag: 1.0.0
-  dockerRepository: airbyte/source-posthog
-  documentationUrl: https://docs.airbyte.com/integrations/sources/posthog
-  githubIssueLabel: source-posthog
-  icon: posthog.svg
-  license: MIT
-  name: PostHog
+      - TODO # Please change to the hostname of the source.
+  registries:
+    oss:
+      enabled: true
+    cloud:
+      enabled: false
   remoteRegistries:
     pypi:
       enabled: true
       packageName: airbyte-source-posthog
-  registries:
-    cloud:
-      enabled: true
-    oss:
-      enabled: true
-  releaseStage: beta
+  connectorBuildOptions:
+    # Please update to the latest version of the connector base image.
+    # https://hub.docker.com/r/airbyte/python-connector-base
+    # Please use the full address with sha256 hash to guarantee build reproducibility.
+    baseImage: docker.io/airbyte/python-connector-base:1.2.0@sha256:c22a9d97464b69d6ef01898edf3f8612dc11614f05a84984451dde195f337db9
+  connectorSubtype: api
+  connectorType: source
+  definitionId: f89a2462-fdb9-4818-a812-256daa35af0f
+  dockerImageTag: 1.1.0
+  dockerRepository: airbyte/source-posthog
+  githubIssueLabel: source-posthog
+  icon: posthog.svg
+  license: MIT
+  name: Posthog
+  releaseDate: TODO
   supportLevel: community
-  releases:
-    breakingChanges:
-      1.0.0:
-        message:
-          The `event` field in the `events` stream has been corrected to the proper data type.
-          To apply this change, refresh the schema for the `events` stream and reset your data. For more information [visit](https://docs.airbyte.com/integrations/sources/posthog-migrations)
-        upgradeDeadline: "2024-01-15"
+  releaseStage: alpha
+  documentationUrl: https://docs.airbyte.com/integrations/sources/posthog
   tags:
-    - cdk:low-code
     - language:python
 metadataSpecVersion: "1.0"
