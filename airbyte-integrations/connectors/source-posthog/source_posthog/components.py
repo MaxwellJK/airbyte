@@ -1,6 +1,8 @@
 import datetime
-from dataclasses import InitVar, dataclass
 import requests
+
+from dataclasses import InitVar, dataclass
+from pathlib import Path
 from typing import Any, ClassVar, Dict, Iterable, List, Mapping, MutableMapping, Optional, Union
 from urllib.parse import urlparse, parse_qs
 
@@ -12,6 +14,7 @@ from airbyte_cdk.sources.declarative.incremental import Cursor
 from airbyte_cdk.sources.declarative.interpolation.interpolated_boolean import InterpolatedBoolean
 from airbyte_cdk.sources.declarative.interpolation.interpolated_string import InterpolatedString
 from airbyte_cdk.sources.declarative.requesters.paginators.strategies.cursor_pagination_strategy import CursorPaginationStrategy
+from airbyte_cdk.sources.declarative.requesters.http_requester import HttpRequester
 from airbyte_cdk.sources.declarative.requesters.requester import Requester
 from airbyte_cdk.sources.declarative.types import Record, StreamSlice, StreamState, Config
 from airbyte_cdk.sources.streams.core import Stream
@@ -219,3 +222,55 @@ class PosthogCursorPaginationStrategy(CursorPaginationStrategy):
 
     def get_page_size(self) -> Optional[int]:
         return self._page_size
+
+@dataclass
+class PosthogHttpRequester(HttpRequester):
+    """
+    Default implementation of a Requester
+
+    Attributes:
+        name (str): Name of the stream. Only used for request/response caching
+        url_base (Union[InterpolatedString, str]): Base url to send requests to
+        path (Union[InterpolatedString, str]): Path to send requests to
+        http_method (Union[str, HttpMethod]): HTTP method to use when sending requests
+        request_options_provider (Optional[InterpolatedRequestOptionsProvider]): request option provider defining the options to set on outgoing requests
+        authenticator (DeclarativeAuthenticator): Authenticator defining how to authenticate to the source
+        error_handler (Optional[ErrorHandler]): Error handler defining how to detect and handle errors
+        config (Config): The user-provided configuration as specified by the source's spec
+        use_cache (bool): Indicates that data should be cached for this stream
+    """
+    
+    def _request_params(
+        self,
+        stream_state: Optional[StreamState],
+        stream_slice: Optional[StreamSlice],
+        next_page_token: Optional[Mapping[str, Any]],
+        extra_params: Optional[Mapping[str, Any]] = None,
+    ) -> Mapping[str, Any]:
+        """
+        Specifies the query parameters that should be set on an outgoing HTTP request given the inputs.
+
+        E.g: you might want to define query parameters for paging if next_page_token is not None.
+        """
+
+        if next_page_token is not None:
+     
+            url = next_page_token['next_page_token']
+            parsed_url = urlparse(url)
+
+            options=dict((k, v[0] if isinstance(v, list) else v)
+                for k, v in parse_qs(parsed_url.query).items())
+
+        else:
+            options = self._get_request_options(
+                stream_state, stream_slice, next_page_token, self.get_request_params, self.get_authenticator().get_request_params, extra_params
+            )
+
+        if isinstance(options, str):
+            raise ValueError("Request params cannot be a string")
+
+        for k, v in options.items():
+            if isinstance(v, (list, dict)):
+                raise ValueError(f"Invalid value for `{k}` parameter. The values of request params cannot be an array or object.")
+
+        return options
