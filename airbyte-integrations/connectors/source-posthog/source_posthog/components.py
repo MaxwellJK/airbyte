@@ -175,3 +175,47 @@ class PostHogSubstreamSlicer(PosthogSlicer):
         # ignore other fields in a slice
         return {self.request_cursor_field_after: stream_slice[self.request_cursor_field_after]}
     
+
+@dataclass
+class PosthogCursorPaginationStrategy(CursorPaginationStrategy):
+    """
+    Pagination strategy that evaluates an interpolated string to define the next page token
+
+    Attributes:
+        page_size (Optional[int]): the number of records to request
+        cursor_value (Union[InterpolatedString, str]): template string evaluating to the cursor value
+        config (Config): connection config
+        stop_condition (Optional[InterpolatedBoolean]): template string evaluating when to stop paginating
+        decoder (Decoder): decoder to decode the response
+    """
+
+    cursor_value: Union[InterpolatedString, str]
+    config: Config
+    parameters: InitVar[Mapping[str, Any]]
+    page_size: Optional[Union[str, int]]
+    stop_condition: Optional[Union[InterpolatedBoolean, str]] = None
+    decoder: Decoder = JsonDecoder(parameters={})
+
+    _page_size = None
+
+    def __post_init__(self, parameters: Mapping[str, Any]) -> None:
+        if isinstance(self.cursor_value, str):
+            self._cursor_value = InterpolatedString.create(self.cursor_value, parameters=parameters)
+        else:
+            self._cursor_value = self.cursor_value
+
+        if isinstance(self.stop_condition, str):
+            self._stop_condition = InterpolatedBoolean(condition=self.stop_condition, parameters=parameters)
+        else:
+            self._stop_condition = self.stop_condition  # type: ignore # the type has been checked
+
+        if isinstance(self.page_size, int) or (self.page_size is None):
+            self._page_size = self.page_size
+        else:
+            page_size = InterpolatedString(self.page_size, parameters=parameters).eval(self.config)
+            if not isinstance(page_size, int):
+                raise Exception(f"{page_size} is of type {type(page_size)}. Expected {int}")
+            self._page_size = page_size
+
+    def get_page_size(self) -> Optional[int]:
+        return self._page_size
