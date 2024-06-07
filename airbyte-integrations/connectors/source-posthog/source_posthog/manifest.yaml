@@ -1,6 +1,5 @@
 version: "0.70.0"
 
-
 definitions:
   schema_loader:
     type: JsonFileSchemaLoader
@@ -14,7 +13,7 @@ definitions:
 
   requester:
     type: CustomRequester
-    class_name: source_posthog.components2.MyHttpRequester
+    class_name: source_posthog.components.PosthogHttpRequester
     url_base: "{{ config['base_url'] or 'https://app.posthog.com'}}/api/"
     http_method: "GET"
     authenticator:
@@ -32,7 +31,7 @@ definitions:
         field_name: "limit"
       pagination_strategy:
         type: "OffsetIncrement"
-        page_size: 100
+        page_size: "{{ config['page_size'] }}"
       page_token_option:
         type: RequestOption
         field_name: "offset"
@@ -60,6 +59,9 @@ definitions:
       class_name: source_posthog.components.PosthogSlicer
       request_cursor_field: "updated_after"
       cursor_field: "updated_at"
+      cursor_datetime_formats:
+        - "%Y-%m-%dT%H:%M:%S.%f%z"
+        - "%Y-%m-%dT%H:%M:%S+00:00"
 
   base_slicing_stream:
     $ref: "#/definitions/base_stream"
@@ -92,6 +94,7 @@ definitions:
       name: "events"
       path: "events"
     primary_key: "id"
+
     incremental_sync:
       type: CustomIncrementalSync
       class_name: source_posthog.components.PostHogSubstreamSlicer
@@ -101,6 +104,11 @@ definitions:
       parent_stream: "#/definitions/projects_stream"
       stream_slice_field: "project_id"
       parent_key: "id"
+      cursor_datetime_formats:
+        - "%Y-%m-%dT%H:%M:%S.%f%z"
+        - "%Y-%m-%dT%H:%M:%S+00:00"
+        - "%Y-%m-%d %H:%M:%S.%f%z"
+        - "%Y-%m-%d %H:%M:%S+00:00"
 
       stream_slicers:
         - type: DatetimeBasedCursor
@@ -111,9 +119,6 @@ definitions:
             datetime: "{{ now_utc().strftime('%Y-%m-%dT%H:%M:%S%z') }}"
             datetime_format: "%Y-%m-%dT%H:%M:%S%z"
           datetime_format: "%Y-%m-%dT%H:%M:%S.%f%z"
-          cursor_datetime_formats:
-            - "%Y-%m-%dT%H:%M:%S.%f%z"
-            - "%Y-%m-%dT%H:%M:%S+00:00"
           cursor_field: timestamp
           start_time_option:
             field_name: after
@@ -133,9 +138,10 @@ definitions:
           inject_into: "request_parameter"
           field_name: "limit"
         pagination_strategy:
-          type: "CursorPagination"
+          type: "CustomPaginationStrategy"
+          class_name: source_posthog.components.PosthogCursorPaginationStrategy
+          page_size: "{{ config['page_size'] }}"
           cursor_value: "{{ response['next'] }}"
-          page_size: 5000
         page_token_option:
           type: RequestPath
         $parameters:
@@ -156,147 +162,3 @@ streams:
 check:
   type: CheckStream
   stream_names: ["projects"]
-
-
-
-
-
-# OLD STUFF
-
-#   cohorts_stream:
-#     $ref: "#/definitions/base_slicing_stream"
-#     $parameters:
-#       name: "cohorts"
-#       path: "cohorts"
-
-#   feature_flags_stream:
-#     $ref: "#/definitions/base_slicing_stream"
-#     $parameters:
-#       name: "feature_flags"
-#       path: "feature_flags"
-
-#   persons_stream:
-#     $ref: "#/definitions/base_slicing_stream"
-#     $parameters:
-#       name: "persons"
-#       path: "persons"
-
-#   annotations_stream:
-#     $ref: "#/definitions/base_slicing_stream"
-#     $parameters:
-#       name: "annotations"
-#       path: "annotations"
-
-#   insights_stream:
-#     $ref: "#/definitions/base_slicing_stream"
-#     $parameters:
-#       name: "insights"
-#       path: "insights"
-
-#   events_stream:
-#     $parameters:
-#       name: "events"
-#       path: "events"
-#     primary_key: "id"
-#     # incremental_sync:
-#     #   type: CustomIncrementalSync
-#     #   class_name: source_posthog.components.EventsCartesianProductStreamSlicer
-#     #   cursor_field: timestamp
-#     #   stream_slicers:
-#     #     - type: SubstreamPartitionRouter
-#     #       parent_stream_configs:
-#     #         - stream: "#/definitions/projects_stream"
-#     #           parent_key: "id"
-#     #           partition_field: "project_id"
-#     #     - type: DatetimeBasedCursor
-#     #       start_datetime:
-#     #         datetime: "{{ config['start_date'] }}"
-#     #         datetime_format: "%Y-%m-%dT%H:%M:%S%z"
-#     #       end_datetime:
-#     #         datetime: "{{ now_utc().strftime('%Y-%m-%dT%H:%M:%S%z') }}"
-#     #         datetime_format: "%Y-%m-%dT%H:%M:%S%z"
-#     #       datetime_format: "%Y-%m-%dT%H:%M:%S.%f%z"
-#     #       cursor_datetime_formats:
-#     #         - "%Y-%m-%dT%H:%M:%S.%f%z"
-#     #         - "%Y-%m-%dT%H:%M:%S+00:00"
-#     #       cursor_granularity: "PT0.000001S"
-#     #       step: "P{{ config.get('events_time_step', 30) }}D"
-#     #       cursor_field: timestamp
-#     #       start_time_option:
-#     #         field_name: after
-#     #         inject_into: request_parameter
-#     #       end_time_option:
-#     #         field_name: before
-#     #         inject_into: request_parameter
-#     incremental_sync:
-#       type: CustomIncrementalSync
-#       # class_name: source_posthog.components.EventsCartesianProductStreamSlicer
-#       class_name: source_posthog.components.GreenHouseSubstreamSlicer
-#       parent_stream: "#/definitions/projects_stream"
-#       request_cursor_field: "after"
-#       stream_slice_field: "project_id"
-#       cursor_field: "timestamp"
-#       parent_key: "id"
-#     schema_loader:
-#       $ref: "#/definitions/schema_loader"
-#     transformations:
-#       - type: AddFields
-#         fields:
-#           - path: [ "properties", "project_id" ]
-#             value: "{{ stream_slice.project_id }}"
-#     retriever:
-#       transformations:
-#         - class_name: "source_posthog.components.EventsSimpleRetriever"
-#           fields:
-#             - path: ["name"]
-#               value: "{{ parameters['name'] }}"
-#             - path: ["primary_key"]
-#               value: "{{ parameters['primary_key'] }}"
-#       name: "{{ parameters['name'] }}"
-#       primary_key: "{{ parameters['primary_key'] }}"
-#       record_selector:
-#         $ref: "#/definitions/selector"
-#       requester:
-#         $ref: "#/definitions/requester"
-#         path: "/projects/{{ stream_slice.project_id }}/{{ parameters['name'] }}/"
-#         partition_router:
-#           type: SubstreamPartitionRouter
-#           parent_stream_configs:
-#             - stream: "#/definitions/projects_stream"
-#               parent_key: "id"
-#               partition_field: "parent_id"
-#       # requester:
-#       #   type: CustomRequester
-#       #   class_name: source_posthog.components2.MyHttpRequester
-#       #   url_base: "{{ config['base_url'] or 'https://app.posthog.com'}}/api/"
-#       #   http_method: "GET"
-#       #   path: "/projects/{{ stream_slice.project_id }}/{{ parameters['name'] }}/"
-#       #   authenticator:
-#       #     type: BearerAuthenticator
-#       #     api_token: "{{ config['api_key'] }}"
-#       paginator:
-#         type: "DefaultPaginator"
-#         page_size_option:
-#           inject_into: "request_parameter"
-#           field_name: "limit"
-#         pagination_strategy:
-#           type: "CursorPagination"
-#           cursor_value: "{{ response['next'] }}"
-#           page_size: 10000
-#         page_token_option:
-#           type: RequestPath
-#         $parameters:
-#           url_base: "#/definitions/requester/url_base"
-
-# streams:
-#   - "#/definitions/projects_stream"
-#   - "#/definitions/cohorts_stream"
-#   - "#/definitions/feature_flags_stream"
-#   - "#/definitions/persons_stream"
-#   - "#/definitions/events_stream"
-#   - "#/definitions/annotations_stream"
-#   - "#/definitions/insights_stream"
-
-# check:
-#   type: CheckStream
-#   stream_names: ["projects"]
