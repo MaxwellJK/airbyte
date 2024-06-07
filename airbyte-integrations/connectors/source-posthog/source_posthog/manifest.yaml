@@ -94,7 +94,12 @@ definitions:
       name: "events"
       path: "events"
     primary_key: "id"
-
+    transformations:
+        - type: AddFields
+          fields:
+            - path: [ "project_id" ]
+              value: "{{ stream_slice.project_id }}"
+              
     incremental_sync:
       type: CustomIncrementalSync
       class_name: source_posthog.components.PostHogSubstreamSlicer
