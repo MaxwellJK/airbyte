@@ -87,6 +87,35 @@ definitions:
       $ref: "#/definitions/retriever"
       requester: "#/definitions/requester"
 
+  cohorts_stream:
+    $ref: "#/definitions/base_slicing_stream"
+    $parameters:
+      name: "cohorts"
+      path: "cohorts"
+
+  feature_flags_stream:
+    $ref: "#/definitions/base_slicing_stream"
+    $parameters:
+      name: "feature_flags"
+      path: "feature_flags"
+
+  persons_stream:
+    $ref: "#/definitions/base_slicing_stream"
+    $parameters:
+      name: "persons"
+      path: "persons"
+
+  annotations_stream:
+    $ref: "#/definitions/base_slicing_stream"
+    $parameters:
+      name: "annotations"
+      path: "annotations"
+
+  insights_stream:
+    $ref: "#/definitions/base_slicing_stream"
+    $parameters:
+      name: "insights"
+      path: "insights"
 
   events_stream:
     $ref: "#/definitions/base_incremental_stream"
@@ -99,7 +128,7 @@ definitions:
           fields:
             - path: [ "project_id" ]
               value: "{{ stream_slice.project_id }}"
-              
+
     incremental_sync:
       type: CustomIncrementalSync
       class_name: source_posthog.components.PostHogSubstreamSlicer
@@ -160,9 +189,9 @@ streams:
   - "#/definitions/cohorts_stream"
   - "#/definitions/feature_flags_stream"
   - "#/definitions/persons_stream"
-  - "#/definitions/events_stream"
   - "#/definitions/annotations_stream"
   - "#/definitions/insights_stream"
+  - "#/definitions/events_stream"
 
 check:
   type: CheckStream
