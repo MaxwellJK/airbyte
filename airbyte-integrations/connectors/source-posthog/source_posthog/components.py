@@ -32,8 +32,7 @@ class PosthogSlicer(Cursor):
     config: Config
     cursor_datetime_formats: List[str]    
 
-    DATETIME_FORMAT: ClassVar[str] = "%Y-%m-%dT%H:%M:%S.%fZ"
-    DATETIME_FORMAT2: ClassVar[str] = "%Y-%m-%dT%H:%M:%S.%f%z"
+    DATETIME_FORMAT: ClassVar[str] = "%Y-%m-%dT%H:%M:%S.%f%z"
 
     def __post_init__(self, parameters: Mapping[str, Any]):
         self._state = {}
@@ -45,7 +44,7 @@ class PosthogSlicer(Cursor):
 
     def _max_dt_str(self, *args: str) -> Optional[str]:
         new_state_candidates = list(map(lambda x: 
-                                            datetime.datetime.strptime(x, self.DATETIME_FORMAT2), 
+                                            datetime.datetime.strptime(x, self.DATETIME_FORMAT), 
                                             filter(None, args)
                                         )
                                     )
@@ -92,8 +91,7 @@ class PosthogSlicer(Cursor):
             return False
 
     def _parse_to_datetime(self, datetime_str: str) -> datetime.datetime:
-        # return datetime.datetime.strptime(datetime_str, self.DATETIME_FORMAT)
-        for datetime_format in self.cursor_datetime_formats + [self.DATETIME_FORMAT] + [self.DATETIME_FORMAT2]:
+        for datetime_format in self.cursor_datetime_formats + [self.DATETIME_FORMAT]:
             try:
                 return self._parser.parse(datetime_str, datetime_format)
             except ValueError:
